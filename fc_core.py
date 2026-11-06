@@ -133,15 +133,16 @@ def parse_kb(facts_text: str, rules_text: str) -> Tuple[List[str], List[Rule]]:
         if _ARROW.search(line):
             raise ValueError(f"Facts line {n}: '{line}' looks like a rule. Put rules in the rules box.")
         facts.append(line)
+    facts = list(dict.fromkeys(facts))                 # the same fact typed twice counts once
 
-    rules: List[Rule] = []
+    parsed = []                                        # (line number, explicit name or None, premises, conclusion)
     for n, raw in enumerate(rules_text.splitlines(), 1):
         line = raw.split("#", 1)[0].strip()
         if not line:
             continue
-        name = f"R{len(rules) + 1}"
+        name = None
         m = re.match(r"^([A-Za-z_][\w]*)\s*:\s*(.+)$", line)
-        if m and "(" not in m.group(1):
+        if m:
             name, line = m.group(1), m.group(2)
         parts = _ARROW.split(line)
         if len(parts) != 2:
@@ -152,7 +153,19 @@ def parse_kb(facts_text: str, rules_text: str) -> Tuple[List[str], List[Rule]]:
             raise ValueError(f"Rules line {n}: a rule needs at least one condition before the arrow.")
         if not right or _AND.search(right):
             raise ValueError(f"Rules line {n}: a rule must have exactly one conclusion after the arrow.")
-        if name in {r.name for r in rules}:
+        parsed.append((n, name, premises, right))
+
+    explicit = [p[1] for p in parsed if p[1]]
+    for n, name, _, _ in parsed:
+        if name and explicit.count(name) > 1:
             raise ValueError(f"Rules line {n}: the rule name '{name}' is already used.")
+    used, rules = set(explicit), []
+    for position, (n, name, premises, right) in enumerate(parsed, 1):
+        if not name:                                   # automatic name = rule position, skipping names already taken
+            k = position
+            while f"R{k}" in used:
+                k += 1
+            name = f"R{k}"
+            used.add(name)
         rules.append(Rule(name, premises, right))
     return facts, rules
