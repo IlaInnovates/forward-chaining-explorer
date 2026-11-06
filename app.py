@@ -4,7 +4,7 @@ An interactive explainer for FORWARD CHAINING (Foundations of AI, 26AI601, Modul
 Run locally:  streamlit run app.py
 """
 import streamlit as st
-from fc_core import FCResult, Rule, forward_chain, parse_kb, prove
+from fc_core import FCResult, forward_chain, parse_kb, prove
 
 st.set_page_config(page_title="Forward Chaining Explorer", page_icon="🔗", layout="wide")
 
@@ -109,9 +109,9 @@ def rule_status(result: FCResult, rules, step: int):
 
 
 # ------------------------------------------------------------------ the explorer widget
-def render_explorer(key: str, facts, rules, query: str):
+def render_explorer(key: str, facts, rules, query: str, scope: str = ""):
     with st.expander("Facts the system starts with (untick a fact to ask “what if we did not know this?”)", expanded=True):
-        included = [f for f in facts if st.checkbox(f, value=True, key=f"{key}_fact_{f}")]
+        included = [f for f in facts if st.checkbox(f, value=True, key=f"{key}_{scope}_fact_{f}")]
 
     result = forward_chain(included, rules, query or None)
     n = len(result.firings)
@@ -198,7 +198,7 @@ with tab_watch:
     sc = SCENARIOS[name]
     st.markdown(sc["about"])
     s_facts, s_rules = parse_kb(sc["facts"], sc["rules"])
-    render_explorer("ex", s_facts, s_rules, sc["query"])
+    render_explorer("ex", s_facts, s_rules, sc["query"], scope=f"s{list(SCENARIOS).index(name)}")
 
 with tab_try:
     st.markdown("Write your own knowledge base. **Facts:** one per line. **Rules:** `A & B -> C` "
@@ -215,7 +215,7 @@ with tab_try:
         if not c_facts:
             st.warning("Add at least one fact to start from.")
         else:
-            render_explorer("cx", c_facts, c_rules, t_query.strip())
+            render_explorer("cx", c_facts, c_rules, t_query.strip(), scope="custom")
 
 st.divider()
 st.caption("Built for Foundations of Artificial Intelligence (26AI601). Interactive-explainer style inspired by the "
